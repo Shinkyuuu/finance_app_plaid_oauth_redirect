@@ -1,26 +1,16 @@
 <!DOCTYPE html>
 <html>
-<head><title>Plaid OAuth Complete</title></head>
+<head>
+  <title>Plaid OAuth Complete</title>
+</head>
 <body>
 <script>
-  // Get the public_token from query string
-  const params = new URLSearchParams(window.location.search);
-  const public_token = params.get('public_token');
+  window.opener?.postMessage(
+    { plaidRedirectUri: window.location.href },
+    "*"
+  );
 
-  if (public_token) {
-    // Send the token to your backend Lambda
-    fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/exchange-public-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ public_token })
-    }).then(() => {
-      document.body.innerHTML = '<h2>✅ OAuth Complete! You can return to the app.</h2>';
-    }).catch((err) => {
-      document.body.innerHTML = `<h2>❌ Error: ${err.message}</h2>`;
-    });
-  } else {
-    document.body.innerHTML = '<h2>❌ No token received.</h2>';
-  }
+  document.body.innerHTML = "<h2>Return to the app: authentication complete.</h2>";
 </script>
 </body>
 </html>
