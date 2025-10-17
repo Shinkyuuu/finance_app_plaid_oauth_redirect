@@ -2,26 +2,40 @@
 <html>
 <head><title>Plaid OAuth Complete</title></head>
 <body>
+<h2>Processing...</h2>
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const oauth_state_id = params.get('oauth_state_id');
+const params = new URLSearchParams(window.location.search);
+const oauth_state_id = params.get('oauth_state_id');
 
-  if (oauth_state_id) {
-    // Send the OAuth state ID to your backend Lambda
-    fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/exchange-public-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oauth_state_id })
-    })
-    .then(() => {
-      document.body.innerHTML = '<h2>OAuth Complete! You can return to the app.</h2>';
-    })
-    .catch((err) => {
-      document.body.innerHTML = `<h2>Error: ${err.message}</h2>`;
-    });
-  } else {
-    document.body.innerHTML = '<h2>No OAuth state received.</h2>';
-  }
+if (!oauth_state_id) {
+    document.body.innerHTML = '<h2>No oauth_state_id received.</h2>';
+} else {
+    async function pollForPublicToken() {
+        try {
+            const res = await fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/poll-oauth-public-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oauth_state_id })
+            });
+            const data = await res.json();
+            if (data.public_token) {
+                // Use your existing exchange Lambda
+                await fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/exchange-public-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ public_token: data.public_token })
+                });
+                document.body.innerHTML = '<h2>OAuth Complete! You can return to the app.</h2>';
+            } else {
+                // Retry after 1 sec
+                setTimeout(pollForPublicToken, 1000);
+            }
+        } catch (err) {
+            document.body.innerHTML = `<h2>Error: ${err.message}</h2>`;
+        }
+    }
+    pollForPublicToken();
+}
 </script>
 </body>
 </html>
