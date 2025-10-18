@@ -1,29 +1,50 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Plaid OAuth Redirect</title>
-    </head>
-    <body>
-        <script>
-            (async () => {
-                const params = new URLSearchParams(window.location.search);
-                const oauthStateId = params.get('oauth_state_id');
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plaid OAuth Redirect</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f7f8fa;
+      color: #222;
+      text-align: center;
+      margin-top: 20vh;
+    }
+  </style>
+</head>
+<body>
+  <h2>Finishing connection...</h2>
+  <p id="msg">Please wait — returning to the app.</p>
 
-                if (!oauthStateId) return;
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const oauthStateId = params.get("oauth_state_id");
 
-                try {
-                    await fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/oauth-complete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ oauthStateId }),
-                    });
-                    document.body.innerHTML = '<h3>Bank login complete. You can return to the app.</h3>';
-                } catch (err) {
-                    document.body.innerHTML = '<h3>Failed to notify backend.</h3>';
-                    console.error(err);
-                }
-            })();
-        </script>
-    </body>
+      if (!oauthStateId) {
+        document.getElementById("msg").innerText = "Missing oauth_state_id";
+        return;
+      }
+
+      try {
+        await fetch("https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/oauth-complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oauthStateId })
+        });
+
+        document.getElementById("msg").innerText = "OAuth complete! You can close this tab.";
+      } catch (err) {
+        document.getElementById("msg").innerText = "Failed to notify app.";
+        console.error("Error notifying backend:", err);
+      }
+
+      setTimeout(() => {
+        window.open('', '_self').close(); // Works if user opened this page via redirect
+      }, 1500);
+    })();
+  </script>
+</body>
 </html>
