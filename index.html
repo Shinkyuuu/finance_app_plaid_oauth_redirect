@@ -1,34 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8">
   <title>Plaid OAuth Redirect</title>
 </head>
 <body>
-  <h2 id="status">Redirecting...</h2>
-  <script>
-    (function() {
-      // Get the oauth_state_id from the query string
-      const params = new URLSearchParams(window.location.search);
-      const oauthStateId = params.get("oauth_state_id");
+<script>
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const oauthStateId = params.get('oauth_state_id');
 
-      if (!oauthStateId) {
-        console.log("Missing oauth_state_id in query string");
-        document.getElementById("status").innerText =
-          "Error: Missing OAuth state. Please restart the linking process.";
-        return;
-      }
-      console.log("OAuth State ID:", oauthStateId);
-      // Signal the Electron app using the custom protocol
-      // Format: myapp://plaid/oauth-complete?oauth_state_id=...
-      const url = `myapp://plaid/oauth-complete?oauth_state_id=${oauthStateId}`;
+  if (!oauthStateId || !public_token) return;
 
-      // Redirecting using window.location triggers the main process
-      window.location.href = url;
-
-      document.getElementById("status").innerText =
-        "Bank login completed. You can return to the app.";
-    })();
-  </script>
+  try {
+    await fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/oauth-complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oauthStateId }),
+    });
+    document.body.innerHTML = '<h3>Bank login complete. You can return to the app.</h3>';
+  } catch (err) {
+    document.body.innerHTML = '<h3>Failed to notify backend.</h3>';
+    console.error(err);
+  }
+})();
+</script>
 </body>
 </html>
