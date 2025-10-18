@@ -1,47 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Plaid OAuth Complete</title>
+  <meta charset="utf-8" />
+  <title>Plaid OAuth Redirect</title>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 </head>
 <body>
-<h2>Completing bank connection...</h2>
-<script>
-(async () => {
-  // Parse URL for link token (passed via query)
-  const params = new URLSearchParams(window.location.search);
-  const linkToken = params.get('token'); // from Electron popup URL
-  if (!linkToken) {
-    document.body.innerHTML = "<h2>Error: No link token found in URL.</h2>";
-    return;
-  }
+  <h2 id="status">Loading Plaid Link...</h2>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      let linkToken = params.get("link_token");
 
-  const handler = Plaid.create({
-    token: linkToken,
-    receivedRedirectUri: window.location.href, // essential for OAuth
-    onSuccess: async (public_token) => {
-      document.body.innerHTML = "<h2>Exchanging token...</h2>";
-
-      try {
-        await fetch('https://my-api.example.com/exchange-public-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ public_token })
-        });
-
-        document.body.innerHTML = "<h2>✅ OAuth Complete! You can close this window.</h2>";
-      } catch (err) {
-        document.body.innerHTML = `<h2>Error exchanging token: ${err.message}</h2>`;
+      if (linkToken) {
+        localStorage.setItem("plaid_link_token", linkToken);
+        console.log("Stored link_token for reuse.");
+      } else {
+        linkToken = localStorage.getItem("plaid_link_token");
+        console.log("Retrieved stored link_token:", linkToken);
       }
-    },
-    onExit: (err) => {
-      if (err) document.body.innerHTML = `<h2>Link exited with error: ${err.display_message || err.error_message}</h2>`;
-      else document.body.innerHTML = "<h2>Link exited without completing OAuth.</h2>";
-    },
-  });
 
-  handler.open();
-})();
-</script>
+      if (!linkToken) {
+        document.getElementById("status").innerText =
+          "Error: No link_token found. Please start linking again.";
+        return;
+      }
+
+      const handler = Plaid.create({
+        token: linkToken,
+        receivedRedirectUri: window.location.href,
+        onSuccess: async (public_token, metadata) => {
+          document.getElementById("status").innerText = "Exchanging token...";
+          await fetch("https://your-api.execute-api.us-east-1.amazonaws.com/Stage2/exchange-public-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ public_token }),
+          });
+          document.getElementById("status").innerText =
+            "✅ Bank linked successfully. You can close this window.";
+          localStorage.removeItem("plaid_link_token");
+        },
+        onExit: (err, metadata) => {
+          console.error("Plaid exit:", err, metadata);
+          document.getElementById("status").innerText = "Linking cancelled.";
+        },
+      });
+
+      handler.open();
+    })();
+  </script>
 </body>
 </html>
