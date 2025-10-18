@@ -3,50 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <title>Plaid OAuth Redirect</title>
-  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 </head>
 <body>
-  <h2 id="status">Loading Plaid Link...</h2>
+  <h2 id="status">Redirecting...</h2>
   <script>
-    (async () => {
+    (function() {
+      // Get the oauth_state_id from the query string
       const params = new URLSearchParams(window.location.search);
-      let linkToken = params.get("link_token");
+      const oauthStateId = params.get("oauth_state_id");
 
-      if (linkToken) {
-        localStorage.setItem("plaid_link_token", linkToken);
-        console.log("Stored link_token for reuse.");
-      } else {
-        linkToken = localStorage.getItem("plaid_link_token");
-        console.log("Retrieved stored link_token:", linkToken);
-      }
-
-      if (!linkToken) {
+      if (!oauthStateId) {
+        console.log("Missing oauth_state_id in query string");
         document.getElementById("status").innerText =
-          "Error: No link_token found. Please start linking again.";
+          "Error: Missing OAuth state. Please restart the linking process.";
         return;
       }
+      console.log("OAuth State ID:", oauthStateId);
+      // Signal the Electron app using the custom protocol
+      // Format: myapp://plaid/oauth-complete?oauth_state_id=...
+      const url = `myapp://plaid/oauth-complete?oauth_state_id=${oauthStateId}`;
 
-      const handler = Plaid.create({
-        token: linkToken,
-        receivedRedirectUri: window.location.href,
-        onSuccess: async (public_token, metadata) => {
-          document.getElementById("status").innerText = "Exchanging token...";
-          await fetch("https://your-api.execute-api.us-east-1.amazonaws.com/Stage2/exchange-public-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ public_token }),
-          });
-          document.getElementById("status").innerText =
-            "✅ Bank linked successfully. You can close this window.";
-          localStorage.removeItem("plaid_link_token");
-        },
-        onExit: (err, metadata) => {
-          console.error("Plaid exit:", err, metadata);
-          document.getElementById("status").innerText = "Linking cancelled.";
-        },
-      });
+      // Redirecting using window.location triggers the main process
+      window.location.href = url;
 
-      handler.open();
+      document.getElementById("status").innerText =
+        "Bank login completed. You can return to the app.";
     })();
   </script>
 </body>
