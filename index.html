@@ -5,42 +5,39 @@
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 </head>
 <body>
-<h2>Processing your bank connection...</h2>
-
+<h2>Completing bank connection...</h2>
 <script>
 (async () => {
+  // Parse URL for link token (passed via query)
   const params = new URLSearchParams(window.location.search);
-  const linkToken = params.get('token');               // <-- read from URL
-  const receivedRedirectUri = window.location.href;    // contains oauth_state_id
-
+  const linkToken = params.get('token'); // from Electron popup URL
   if (!linkToken) {
-      document.body.innerHTML = "<h2>Error: No link token found in URL.</h2>";
-      return;
+    document.body.innerHTML = "<h2>Error: No link token found in URL.</h2>";
+    return;
   }
 
   const handler = Plaid.create({
     token: linkToken,
-    receivedRedirectUri,
+    receivedRedirectUri: window.location.href, // essential for OAuth
     onSuccess: async (public_token) => {
       document.body.innerHTML = "<h2>Exchanging token...</h2>";
+
       try {
-        await fetch('https://umsdo186p8.execute-api.us-east-1.amazonaws.com/Stage2/exchange-public-token', {
+        await fetch('https://my-api.example.com/exchange-public-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ public_token })
         });
-        document.body.innerHTML = "<h2>OAuth Complete! You can return to the app.</h2>";
+
+        document.body.innerHTML = "<h2>✅ OAuth Complete! You can close this window.</h2>";
       } catch (err) {
         document.body.innerHTML = `<h2>Error exchanging token: ${err.message}</h2>`;
       }
     },
     onExit: (err) => {
-      if (err) {
-        document.body.innerHTML = `<h2>Link exited with error: ${err.display_message || err.error_message}</h2>`;
-      } else {
-        document.body.innerHTML = "<h2>Link exited without completing OAuth.</h2>";
-      }
-    }
+      if (err) document.body.innerHTML = `<h2>Link exited with error: ${err.display_message || err.error_message}</h2>`;
+      else document.body.innerHTML = "<h2>Link exited without completing OAuth.</h2>";
+    },
   });
 
   handler.open();
